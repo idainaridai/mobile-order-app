@@ -20,6 +20,11 @@ export enum OrderStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum TableOrderMode {
+  A_LA_CARTE = 'a_la_carte',
+  COURSE_WITH_DRINK_PLAN = 'course_with_drink_plan',
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -59,3 +64,5 @@ export interface TableSession {
   tableId: string;
   isActive: boolean;
 }
+
+export type TableOrderModeMap = Record<string, TableOrderMode>;

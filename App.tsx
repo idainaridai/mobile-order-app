@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import CustomerView from './components/CustomerView';
 import StaffView from './components/staff/StaffView';
-import { Product, Order, CartItem, OrderStatus } from './types';
+import { Product, Order, CartItem, OrderStatus, TableOrderMode, TableOrderModeMap } from './types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './services/mockData';
 
 const PRODUCTS_STORAGE_KEY = 'todoroki-products';
 const ORDERS_STORAGE_KEY = 'todoroki-orders-v2';
+const TABLE_ORDER_MODE_KEY = 'todoroki-table-order-mode';
 
 const loadStoredProducts = (): Product[] => {
   if (typeof window === 'undefined') return INITIAL_PRODUCTS;
@@ -35,6 +36,20 @@ const loadStoredOrders = (): Order[] => {
   return INITIAL_ORDERS;
 };
 
+const loadStoredTableOrderModes = (): TableOrderModeMap => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(TABLE_ORDER_MODE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as TableOrderModeMap;
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch (err) {
+    console.warn('Failed to read stored table order modes', err);
+  }
+  return {};
+};
+
 const App: React.FC = () => {
   // Routing State
   const [route, setRoute] = useState<'LANDING' | 'CUSTOMER' | 'STAFF'>('LANDING');
@@ -51,6 +66,7 @@ const App: React.FC = () => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('todoroki-food-enabled') === 'true';
   });
+  const [tableOrderModes, setTableOrderModes] = useState<TableOrderModeMap>(loadStoredTableOrderModes);
 
   // Keep product list (incl. sold-out flags) in localStorage so staff changes reflect immediately across tabs
   useEffect(() => {
@@ -75,6 +91,15 @@ const App: React.FC = () => {
     localStorage.setItem('todoroki-food-enabled', String(isFoodOrderEnabled));
   }, [isFoodOrderEnabled]);
 
+  // Persist table order modes
+  useEffect(() => {
+    try {
+      localStorage.setItem(TABLE_ORDER_MODE_KEY, JSON.stringify(tableOrderModes));
+    } catch (err) {
+      console.warn('Failed to persist table order modes', err);
+    }
+  }, [tableOrderModes]);
+
   // Sync updates from other tabs/windows
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -98,6 +123,15 @@ const App: React.FC = () => {
         }
       } else if (event.key === 'todoroki-food-enabled' && event.newValue) {
         setIsFoodOrderEnabled(event.newValue === 'true');
+      } else if (event.key === TABLE_ORDER_MODE_KEY && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue) as TableOrderModeMap;
+          if (parsed && typeof parsed === 'object') {
+            setTableOrderModes(parsed);
+          }
+        } catch (err) {
+          console.warn('Failed to parse incoming table order modes', err);
+        }
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -163,6 +197,10 @@ const App: React.FC = () => {
     setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
+  const handleUpdateTableOrderMode = (id: string, mode: TableOrderMode) => {
+    setTableOrderModes(prev => ({ ...prev, [id]: mode }));
+  };
+
   const handleEnterTable = (id: string) => {
     if (!isValidTable(id)) {
       alert('テーブル番号は1〜7の範囲で選択してください。');
@@ -221,6 +259,7 @@ const App: React.FC = () => {
   }
 
   if (route === 'CUSTOMER') {
+    const currentTableMode = tableOrderModes[tableId] || TableOrderMode.A_LA_CARTE;
     return (
       <CustomerView
         tableId={tableId}
@@ -229,6 +268,7 @@ const App: React.FC = () => {
         onPlaceOrder={handlePlaceOrder}
         onCallStaff={handleCallStaff}
         isFoodOrderEnabled={isFoodOrderEnabled}
+        tableOrderMode={currentTableMode}
       />
     );
   }
@@ -245,6 +285,8 @@ const App: React.FC = () => {
         onDeleteProduct={handleDeleteProduct}
         isFoodOrderEnabled={isFoodOrderEnabled}
         onToggleFoodOrder={(enabled) => setIsFoodOrderEnabled(enabled)}
+        tableOrderModes={tableOrderModes}
+        onUpdateTableOrderMode={handleUpdateTableOrderMode}
       />
     );
   }

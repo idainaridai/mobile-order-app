@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Product, CartItem, ProductCategory, Order, OrderStatus, FoodSubcategory } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Product, CartItem, ProductCategory, Order, OrderStatus, FoodSubcategory, TableOrderMode } from '../types';
 import { ShoppingCart, Clock, Bell, X } from 'lucide-react';
 
 type DrinkCustomizationKey = 'style';
@@ -52,9 +52,209 @@ interface CustomerViewProps {
   onPlaceOrder: (items: CartItem[]) => void;
   onCallStaff: () => void;
   isFoodOrderEnabled: boolean;
+  tableOrderMode: TableOrderMode;
 }
 
-const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, onPlaceOrder, onCallStaff, isFoodOrderEnabled }) => {
+const CoursePlanView: React.FC<{
+  tableId: string;
+  onCallStaff: () => void;
+  orders: Order[];
+  products: Product[];
+  onPlaceOrder: (items: CartItem[]) => void;
+}> = ({ tableId, onCallStaff, orders, products, onPlaceOrder }) => {
+  const activeOrders = orders.filter(o => o.status !== OrderStatus.CANCELLED);
+  const totalAmount = activeOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const allowedDrinkMatcher = (name: string) => {
+    const keywords = [
+      'スパークリング',
+      'ワイン',
+      '瓶ビール',
+      'ハートランド',
+      'カシス',
+      'ライチ',
+      'ブラックニッカ',
+      'サワー',
+      'ハイボール',
+      'ウーロンハイ',
+      '抹茶ハイ',
+      '海（',
+      '蔵の師魂',
+      'つくし',
+      'ウーロン茶',
+      '抹茶',
+      'オレンジジュース',
+      'グレープフルーツジュース',
+      'コーラ',
+      'ジンジャーエール',
+    ];
+    return keywords.some(k => name.includes(k));
+  };
+  const allowedDrinks = useMemo(() => products.filter(p => allowedDrinkMatcher(p.name)), [products]);
+  const [drinkQuantities, setDrinkQuantities] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setDrinkQuantities(prev => {
+      const next: Record<string, number> = {};
+      allowedDrinks.forEach(d => {
+        next[d.id] = prev[d.id] ?? 0;
+      });
+      return next;
+    });
+  }, [allowedDrinks]);
+
+  const updateQty = (id: string, delta: number) => {
+    setDrinkQuantities(prev => {
+      const current = prev[id] ?? 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const submitDrinkOrder = () => {
+    const items: CartItem[] = [];
+    allowedDrinks.forEach(drink => {
+      const qty = drinkQuantities[drink.id] || 0;
+      if (qty > 0 && !drink.isSoldOut) {
+        items.push({
+          ...drink,
+          quantity: qty,
+          cartKey: buildCartKey(drink.id, []),
+        });
+      }
+    });
+    if (items.length === 0) {
+      alert('数量を選んでください。');
+      return;
+    }
+    onPlaceOrder(items);
+    setDrinkQuantities(prev => {
+      const reset: Record<string, number> = { ...prev };
+      Object.keys(reset).forEach(key => { reset[key] = 0; });
+      return reset;
+    });
+    alert('ドリンクを送信しました。');
+  };
+
+  return (
+    <div className="min-h-screen pb-16 bg-gradient-to-br from-izakaya-base via-[#f7f3ec] to-white text-izakaya-text">
+      <header className="sticky top-0 z-20 backdrop-blur-md bg-white/85 border-b border-white/70 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.5)] px-4 py-3 sm:px-6 flex justify-between items-center">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-izakaya-muted">Todoroki Dining</p>
+          <h1 className="font-heading text-2xl text-izakaya-wood leading-tight">飲み放題＋コースプラン</h1>
+          <p className="text-[12px] text-izakaya-muted">テーブル #{tableId}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={onCallStaff} className="relative p-2 bg-izakaya-wood text-white rounded-full hover:-translate-y-0.5 transition shadow-lg shadow-izakaya-wood/30">
+            <Bell size={20} />
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <div className="bg-white/90 border border-izakaya-wood/10 rounded-xl shadow-lg p-5 sm:p-6">
+          <p className="text-xs uppercase tracking-[0.14em] text-izakaya-muted mb-2">Course Mode</p>
+          <h2 className="text-izakaya-wood font-heading text-2xl sm:text-3xl mb-3">このテーブルは飲み放題＋コース料理をご利用中です</h2>
+          <p className="text-sm text-izakaya-muted leading-relaxed">
+            ドリンクのおかわりやコースの進行はスタッフが対応します。スタッフを呼ぶボタンからお声がけください。
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="px-3 py-1 rounded-full bg-izakaya-wood text-white text-xs font-bold">飲み放題プラン</span>
+            <span className="px-3 py-1 rounded-full bg-white border border-izakaya-wood/20 text-izakaya-wood text-xs font-bold">コース料理</span>
+          </div>
+          <div className="mt-5">
+            <button
+              onClick={onCallStaff}
+              className="w-full sm:w-auto inline-flex items-center gap-2 bg-izakaya-wood text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg shadow-izakaya-wood/20 hover:shadow-izakaya-wood/30 active:scale-[0.99] transition"
+            >
+              スタッフを呼ぶ
+              <span className="text-[10px] uppercase tracking-[0.12em] bg-white/20 px-2 py-0.5 rounded-full">Call</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white/95 border border-izakaya-wood/10 rounded-xl shadow p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.12em] text-izakaya-muted">Drink Plan Menu</p>
+              <h3 className="text-lg font-bold text-izakaya-wood">飲み放題ドリンク</h3>
+            </div>
+            <span className="text-xs text-izakaya-muted">飲み放題対象のみ選択可</span>
+          </div>
+          {allowedDrinks.length === 0 ? (
+            <p className="text-sm text-izakaya-muted">ドリンクメニューを読み込めませんでした。スタッフへお声がけください。</p>
+          ) : (
+            <div className="space-y-3">
+              {allowedDrinks.map(drink => {
+                const qty = drinkQuantities[drink.id] || 0;
+                return (
+                  <div key={drink.id} className="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2 bg-white">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-izakaya-wood">{drink.name}</span>
+                      <span className="text-xs text-izakaya-muted">{drink.isSoldOut ? '売切中' : '注文可能'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateQty(drink.id, -1)}
+                        className="px-3 py-1 rounded-full border border-gray-200 text-sm"
+                        disabled={qty === 0}
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-izakaya-wood">{qty}</span>
+                      <button
+                        onClick={() => updateQty(drink.id, 1)}
+                        className="px-3 py-1 rounded-full bg-izakaya-wood text-white text-sm disabled:opacity-50"
+                        disabled={drink.isSoldOut}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="text-right">
+                <button
+                  onClick={submitDrinkOrder}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-izakaya-wood text-white font-semibold shadow-sm hover:-translate-y-0.5 transition"
+                >
+                  ドリンクを送信
+                  <span className="text-[10px] uppercase tracking-[0.12em] bg-white/20 px-2 py-0.5 rounded-full">Send</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white/90 border border-izakaya-wood/10 rounded-xl shadow p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.12em] text-izakaya-muted">Orders Summary</p>
+              <h3 className="text-lg font-bold text-izakaya-wood">これまでのご注文</h3>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-izakaya-muted">累計</p>
+              <p className="text-xl font-bold text-izakaya-wood">¥{totalAmount.toLocaleString()}</p>
+            </div>
+          </div>
+          {activeOrders.length === 0 ? (
+            <p className="mt-3 text-sm text-izakaya-muted">まだ注文はありません。スタッフにお声がけください。</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {activeOrders.map(order => (
+                <li key={order.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <span className="text-izakaya-wood font-semibold">注文 #{order.id}</span>
+                  <span className="text-izakaya-muted">¥{order.totalAmount.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, onPlaceOrder, onCallStaff, isFoodOrderEnabled, tableOrderMode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -181,6 +381,8 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
 
   const renderProductCard = (product: Product) => {
     const requiresMixSelect = isShochu(product);
+    const isFoodOrRecommend = product.category === ProductCategory.FOOD || product.category === ProductCategory.RECOMMEND;
+    const isFoodOrderingStopped = !isFoodOrderEnabled && isFoodOrRecommend;
     return (
       <div
         key={product.id}
@@ -220,7 +422,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
             </div>
             {product.isSoldOut ? (
               <span className="text-xs text-red-600 font-bold">売り切れ</span>
-            ) : product.category === ProductCategory.FOOD && !isFoodOrderEnabled ? (
+            ) : isFoodOrderingStopped ? (
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-izakaya-muted bg-gray-100 px-2 py-1 rounded border border-gray-200">スタッフへ注文</span>
               </div>
@@ -243,6 +445,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
       </div>
     );
   };
+
+  if (tableOrderMode === TableOrderMode.COURSE_WITH_DRINK_PLAN) {
+    return <CoursePlanView tableId={tableId} onCallStaff={onCallStaff} orders={orders} products={products} onPlaceOrder={onPlaceOrder} />;
+  }
 
   return (
     <div className="min-h-screen pb-24 relative bg-gradient-to-br from-izakaya-base via-[#f7f3ec] to-white text-izakaya-text">
