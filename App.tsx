@@ -5,7 +5,7 @@ import { Product, Order, CartItem, OrderStatus } from './types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './services/mockData';
 
 const PRODUCTS_STORAGE_KEY = 'todoroki-products';
-const ORDERS_STORAGE_KEY = 'todoroki-orders';
+const ORDERS_STORAGE_KEY = 'todoroki-orders-v2';
 
 const loadStoredProducts = (): Product[] => {
   if (typeof window === 'undefined') return INITIAL_PRODUCTS;
@@ -47,6 +47,10 @@ const App: React.FC = () => {
   // Data State (In a real app, this would be managed by Firebase Context or Query Hooks)
   const [products, setProducts] = useState<Product[]>(loadStoredProducts);
   const [orders, setOrders] = useState<Order[]>(loadStoredOrders);
+  const [isFoodOrderEnabled, setIsFoodOrderEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('todoroki-food-enabled') === 'true';
+  });
 
   // Keep product list (incl. sold-out flags) in localStorage so staff changes reflect immediately across tabs
   useEffect(() => {
@@ -65,6 +69,11 @@ const App: React.FC = () => {
       console.warn('Failed to persist orders', err);
     }
   }, [orders]);
+
+  // Persist food order setting
+  useEffect(() => {
+    localStorage.setItem('todoroki-food-enabled', String(isFoodOrderEnabled));
+  }, [isFoodOrderEnabled]);
 
   // Sync updates from other tabs/windows
   useEffect(() => {
@@ -87,6 +96,8 @@ const App: React.FC = () => {
         } catch (err) {
           console.warn('Failed to parse incoming orders', err);
         }
+      } else if (event.key === 'todoroki-food-enabled' && event.newValue) {
+        setIsFoodOrderEnabled(event.newValue === 'true');
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -168,62 +179,63 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-izakaya-base via-white to-izakaya-base flex flex-col items-center justify-center p-4 relative">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(201,163,107,0.12),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(31,37,40,0.12),transparent_30%)]" aria-hidden />
-         <div className="relative bg-white/90 backdrop-blur border border-white/70 p-8 rounded-2xl shadow-[0_25px_60px_-32px_rgba(0,0,0,0.45)] max-w-sm w-full text-center overflow-hidden">
-            <div className="absolute -top-24 -right-16 w-48 h-48 rounded-full bg-izakaya-wood/5 blur-3xl" aria-hidden />
-            <div className="relative">
-              <h1 className="font-heading text-3xl text-izakaya-wood mb-1">とどろき２丁目バル</h1>
-              <p className="text-sm tracking-[0.22em] uppercase text-izakaya-muted mb-6">mobile order</p>
-              
-              <div className="mb-6 text-left">
-                 <label className="block text-sm font-bold text-izakaya-wood mb-2">テーブル番号を入力</label>
-                 <input 
-                   type="number" 
-                   min={1}
-                   max={7}
-                   className="w-full border border-izakaya-wood/20 rounded-lg p-3 text-lg text-center focus:border-izakaya-wood focus:ring-2 focus:ring-izakaya-wood/20 outline-none bg-white"
-                   placeholder="1〜7"
-                   value={tableId}
-                   onChange={(e) => setTableId(e.target.value)}
-                 />
-              </div>
-              
-              <button 
-                onClick={() => tableId && handleEnterTable(tableId)}
-                disabled={!isValidTable(tableId)}
-                className="w-full bg-izakaya-wood text-white font-bold py-3 rounded-lg hover:-translate-y-0.5 transition shadow-lg shadow-izakaya-wood/25"
-              >
-                メニューを見る
-              </button>
+        <div className="relative bg-white/90 backdrop-blur border border-white/70 p-8 rounded-2xl shadow-[0_25px_60px_-32px_rgba(0,0,0,0.45)] max-w-sm w-full text-center overflow-hidden">
+          <div className="absolute -top-24 -right-16 w-48 h-48 rounded-full bg-izakaya-wood/5 blur-3xl" aria-hidden />
+          <div className="relative">
+            <h1 className="font-heading text-3xl text-izakaya-wood mb-1">とどろき２丁目バル</h1>
+            <p className="text-sm tracking-[0.22em] uppercase text-izakaya-muted mb-6">mobile order</p>
 
-              <div className="mt-8 border-t border-izakaya-wood/10 pt-4">
-                <button 
-                  onClick={() => { setRoute('STAFF'); window.location.hash = 'staff'; }}
-                  className="text-sm text-izakaya-muted hover:text-izakaya-wood underline"
-                >
-                  スタッフログイン
-                </button>
-              </div>
+            <div className="mb-6 text-left">
+              <label className="block text-sm font-bold text-izakaya-wood mb-2">テーブル番号を入力</label>
+              <input
+                type="number"
+                min={1}
+                max={7}
+                className="w-full border border-izakaya-wood/20 rounded-lg p-3 text-lg text-center focus:border-izakaya-wood focus:ring-2 focus:ring-izakaya-wood/20 outline-none bg-white"
+                placeholder="1〜7"
+                value={tableId}
+                onChange={(e) => setTableId(e.target.value)}
+              />
             </div>
-         </div>
+
+            <button
+              onClick={() => tableId && handleEnterTable(tableId)}
+              disabled={!isValidTable(tableId)}
+              className="w-full bg-izakaya-wood text-white font-bold py-3 rounded-lg hover:-translate-y-0.5 transition shadow-lg shadow-izakaya-wood/25"
+            >
+              メニューを見る
+            </button>
+
+            <div className="mt-8 border-t border-izakaya-wood/10 pt-4">
+              <button
+                onClick={() => { setRoute('STAFF'); window.location.hash = 'staff'; }}
+                className="text-sm text-izakaya-muted hover:text-izakaya-wood underline"
+              >
+                スタッフログイン
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (route === 'CUSTOMER') {
     return (
-      <CustomerView 
+      <CustomerView
         tableId={tableId}
         products={products}
         orders={orders.filter(o => o.tableId === tableId)} // Only show orders for this table
         onPlaceOrder={handlePlaceOrder}
         onCallStaff={handleCallStaff}
+        isFoodOrderEnabled={isFoodOrderEnabled}
       />
     );
   }
 
   if (route === 'STAFF') {
     return (
-      <StaffView 
+      <StaffView
         orders={orders}
         products={products}
         onUpdateOrderStatus={handleUpdateOrderStatus}
@@ -231,6 +243,8 @@ const App: React.FC = () => {
         onAddProduct={handleAddProduct}
         onUpdateProduct={handleUpdateProduct}
         onDeleteProduct={handleDeleteProduct}
+        isFoodOrderEnabled={isFoodOrderEnabled}
+        onToggleFoodOrder={(enabled) => setIsFoodOrderEnabled(enabled)}
       />
     );
   }

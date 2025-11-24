@@ -51,9 +51,10 @@ interface CustomerViewProps {
   orders: Order[];
   onPlaceOrder: (items: CartItem[]) => void;
   onCallStaff: () => void;
+  isFoodOrderEnabled: boolean;
 }
 
-const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, onPlaceOrder, onCallStaff }) => {
+const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, onPlaceOrder, onCallStaff, isFoodOrderEnabled }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -137,9 +138,9 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
   };
 
   const totalCartPrice = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.quantity), 0), [cart]);
-  const totalHistoryPrice = useMemo(() => 
-    orders.filter(o => o.status !== OrderStatus.CANCELLED).reduce((sum, o) => sum + o.totalAmount, 0), 
-  [orders]);
+  const totalHistoryPrice = useMemo(() =>
+    orders.filter(o => o.status !== OrderStatus.CANCELLED).reduce((sum, o) => sum + o.totalAmount, 0),
+    [orders]);
 
   const filteredProducts = useMemo(() => {
     if (activeTab === 'ALL') return products;
@@ -217,7 +218,13 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
               <span className="text-[11px] uppercase tracking-[0.14em] text-izakaya-muted mb-1">Price</span>
               <span className="font-semibold text-xl text-izakaya-wood">¥{product.price.toLocaleString()}</span>
             </div>
-            {!product.isSoldOut ? (
+            {product.isSoldOut ? (
+              <span className="text-xs text-red-600 font-bold">売り切れ</span>
+            ) : product.category === ProductCategory.FOOD && !isFoodOrderEnabled ? (
+              <div className="flex flex-col items-end">
+                <span className="text-xs font-bold text-izakaya-muted bg-gray-100 px-2 py-1 rounded border border-gray-200">スタッフへ注文</span>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => handleProductSelect(product)}
@@ -230,8 +237,6 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
                 {/* Feedback pulse */}
                 <span className="absolute inset-0 bg-white/15 opacity-0 group-hover:opacity-100 transition duration-300" />
               </button>
-            ) : (
-              <span className="text-xs text-red-600 font-bold">売り切れ</span>
             )}
           </div>
         </div>
@@ -260,24 +265,24 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
             <span className="font-bold text-lg">#{tableId}</span>
           </div>
           <button onClick={() => setIsHistoryOpen(true)} className="relative p-2 bg-white/80 border border-izakaya-wood/10 text-izakaya-wood rounded-full hover:-translate-y-0.5 transition shadow-sm">
-             <Clock size={20} />
+            <Clock size={20} />
           </button>
           <button onClick={onCallStaff} className="relative p-2 bg-izakaya-wood text-white rounded-full hover:-translate-y-0.5 transition shadow-lg shadow-izakaya-wood/30">
-             <Bell size={20} />
+            <Bell size={20} />
           </button>
         </div>
       </header>
 
       {/* Category Tabs */}
       <div className="sticky top-[76px] z-10 bg-gradient-to-b from-white/80 to-white/60 backdrop-blur border-b border-white/70 overflow-x-auto whitespace-nowrap px-3 py-3 flex gap-2 no-scrollbar shadow-[0_12px_24px_-20px_rgba(0,0,0,0.4)]">
-        <button 
+        <button
           onClick={() => setActiveTab('ALL')}
           className={`px-4 py-2 rounded-full text-sm font-bold transition transform ${activeTab === 'ALL' ? 'bg-izakaya-wood text-white shadow-lg shadow-izakaya-wood/25' : 'bg-white/70 text-izakaya-wood border border-izakaya-wood/15 hover:-translate-y-0.5'}`}
         >
           すべて
         </button>
         {Object.values(ProductCategory).map(cat => (
-          <button 
+          <button
             key={cat}
             onClick={() => setActiveTab(cat)}
             className={`px-4 py-2 rounded-full text-sm font-bold transition transform ${activeTab === cat ? 'bg-izakaya-wood text-white shadow-lg shadow-izakaya-wood/25' : 'bg-white/70 text-izakaya-wood border border-izakaya-wood/15 hover:-translate-y-0.5'}`}
@@ -484,7 +489,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
 
       {/* Floating Action Button (Cart) */}
       {cart.length > 0 && (
-        <button 
+        <button
           onClick={() => setIsCartOpen(true)}
           className="fixed bottom-6 right-6 bg-izakaya-wood text-white p-4 rounded-full shadow-[0_14px_40px_-18px_rgba(0,0,0,0.65)] flex items-center gap-2 hover:scale-105 transition-transform z-20"
         >
@@ -498,104 +503,103 @@ const CustomerView: React.FC<CustomerViewProps> = ({ tableId, products, orders, 
       {/* Cart Drawer (Modal) */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-           <div className="bg-white/95 backdrop-blur-md border border-white/70 w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-[0_25px_50px_-24px_rgba(0,0,0,0.5)] max-h-[85vh] flex flex-col">
-              <div className="bg-gradient-to-r from-izakaya-wood to-izakaya-woodLight text-white p-4 flex justify-between items-center">
-                 <h2 className="font-bold text-lg">ご注文内容の確認</h2>
-                 <button onClick={() => setIsCartOpen(false)}><X /></button>
-              </div>
-              
-              <div className="p-4 overflow-y-auto flex-1">
-                 {cart.length === 0 ? (
-                 <p className="text-center text-gray-500 py-8">カートは空です</p>
-                 ) : (
-                   <ul className="space-y-3">
-                    {cart.map(item => (
-                      <li key={item.cartKey} className="flex justify-between items-center bg-izakaya-base rounded-xl border border-izakaya-wood/10 px-3 py-2.5">
-                          <div className="flex-1 pr-3">
-                            <div className="font-bold text-izakaya-text">{item.name}</div>
-                            {item.customizations?.length ? (
-                              <div className="text-xs text-gray-500">{item.customizations.join(' / ')}</div>
-                            ) : null}
-                            <div className="text-sm text-gray-500">¥{item.price.toLocaleString()}</div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button onClick={() => updateQuantity(item.cartKey, -1)} className="w-8 h-8 bg-white border border-izakaya-wood/15 rounded-full flex items-center justify-center text-lg font-bold hover:-translate-y-0.5 transition">-</button>
-                            <span className="w-6 text-center font-bold">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.cartKey, 1)} className="w-8 h-8 bg-izakaya-wood text-white rounded-full flex items-center justify-center text-lg font-bold hover:-translate-y-0.5 transition">+</button>
-                          </div>
-                       </li>
-                     ))}
-                   </ul>
-                 )}
-              </div>
+          <div className="bg-white/95 backdrop-blur-md border border-white/70 w-full max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-[0_25px_50px_-24px_rgba(0,0,0,0.5)] max-h-[85vh] flex flex-col">
+            <div className="bg-gradient-to-r from-izakaya-wood to-izakaya-woodLight text-white p-4 flex justify-between items-center">
+              <h2 className="font-bold text-lg">ご注文内容の確認</h2>
+              <button onClick={() => setIsCartOpen(false)}><X /></button>
+            </div>
 
-              <div className="p-4 bg-izakaya-base border-t">
-                 <div className="flex justify-between items-center text-xl font-bold mb-4">
-                    <span>合計</span>
-                    <span>¥{totalCartPrice.toLocaleString()}</span>
-                 </div>
-                 <button 
-                   onClick={handleCheckout}
-                   disabled={cart.length === 0}
-                   className="w-full bg-izakaya-wood text-white py-3 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-izakaya-wood/25 active:scale-[0.99]"
-                 >
-                   注文を確定する
-                 </button>
+            <div className="p-4 overflow-y-auto flex-1">
+              {cart.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">カートは空です</p>
+              ) : (
+                <ul className="space-y-3">
+                  {cart.map(item => (
+                    <li key={item.cartKey} className="flex justify-between items-center bg-izakaya-base rounded-xl border border-izakaya-wood/10 px-3 py-2.5">
+                      <div className="flex-1 pr-3">
+                        <div className="font-bold text-izakaya-text">{item.name}</div>
+                        {item.customizations?.length ? (
+                          <div className="text-xs text-gray-500">{item.customizations.join(' / ')}</div>
+                        ) : null}
+                        <div className="text-sm text-gray-500">¥{item.price.toLocaleString()}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => updateQuantity(item.cartKey, -1)} className="w-8 h-8 bg-white border border-izakaya-wood/15 rounded-full flex items-center justify-center text-lg font-bold hover:-translate-y-0.5 transition">-</button>
+                        <span className="w-6 text-center font-bold">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.cartKey, 1)} className="w-8 h-8 bg-izakaya-wood text-white rounded-full flex items-center justify-center text-lg font-bold hover:-translate-y-0.5 transition">+</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="p-4 bg-izakaya-base border-t">
+              <div className="flex justify-between items-center text-xl font-bold mb-4">
+                <span>合計</span>
+                <span>¥{totalCartPrice.toLocaleString()}</span>
               </div>
-           </div>
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="w-full bg-izakaya-wood text-white py-3 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-izakaya-wood/25 active:scale-[0.99]"
+              >
+                注文を確定する
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* History Modal */}
       {isHistoryOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-           <div className="bg-white/95 backdrop-blur-md border border-white/70 w-full max-w-md rounded-2xl overflow-hidden shadow-[0_25px_50px_-24px_rgba(0,0,0,0.5)] max-h-[80vh] flex flex-col">
-              <div className="bg-gradient-to-r from-izakaya-wood to-izakaya-woodLight text-white p-4 flex justify-between items-center">
-                 <h2 className="font-bold text-lg">注文履歴</h2>
-                 <button onClick={() => setIsHistoryOpen(false)}><X /></button>
-              </div>
-              <div className="p-4 overflow-y-auto flex-1 bg-izakaya-base">
-                 {orders.length === 0 ? (
-                   <p className="text-center text-gray-500 py-4">まだ注文がありません</p>
-                 ) : (
-                   <div className="space-y-4">
-                     {orders.slice().reverse().map(order => (
-                       <div key={order.id} className="bg-white/90 backdrop-blur border border-izakaya-wood/10 p-3 rounded-xl shadow-sm">
-                          <div className="flex justify-between text-sm text-gray-500 mb-2">
-                             <span>{new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                             <span className={`font-bold px-2 py-0.5 rounded text-xs ${
-                               order.status === OrderStatus.SERVED ? 'bg-green-100 text-green-700' : 
-                               order.status === OrderStatus.PENDING ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200'
-                             }`}>
-                               {order.status === OrderStatus.SERVED ? '提供済' : '準備中'}
-                             </span>
-                          </div>
-                          <ul className="text-sm space-y-1">
-                             {order.items.map((item, idx) => (
-                               <li key={idx} className="flex justify-between">
-                                 <div className="flex flex-col">
-                                   <span>{item.name} x{item.quantity}</span>
-                                  {item.customizations?.length ? (
-                                     <span className="text-xs text-gray-500">{item.customizations.join(' / ')}</span>
-                                   ) : null}
-                                 </div>
-                                 <span>¥{(item.price * item.quantity).toLocaleString()}</span>
-                               </li>
-                             ))}
-                          </ul>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-              </div>
-              <div className="p-4 bg-izakaya-base border-t flex justify-between items-center font-bold">
-                <span>お会計合計</span>
-                <span className="text-xl">¥{totalHistoryPrice.toLocaleString()}</span>
-              </div>
-              <div className="p-2 text-center text-xs text-gray-500 bg-white">
-                ※お会計は伝票をレジまでお持ちください
-              </div>
-           </div>
+          <div className="bg-white/95 backdrop-blur-md border border-white/70 w-full max-w-md rounded-2xl overflow-hidden shadow-[0_25px_50px_-24px_rgba(0,0,0,0.5)] max-h-[80vh] flex flex-col">
+            <div className="bg-gradient-to-r from-izakaya-wood to-izakaya-woodLight text-white p-4 flex justify-between items-center">
+              <h2 className="font-bold text-lg">注文履歴</h2>
+              <button onClick={() => setIsHistoryOpen(false)}><X /></button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 bg-izakaya-base">
+              {orders.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">まだ注文がありません</p>
+              ) : (
+                <div className="space-y-4">
+                  {orders.slice().reverse().map(order => (
+                    <div key={order.id} className="bg-white/90 backdrop-blur border border-izakaya-wood/10 p-3 rounded-xl shadow-sm">
+                      <div className="flex justify-between text-sm text-gray-500 mb-2">
+                        <span>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className={`font-bold px-2 py-0.5 rounded text-xs ${order.status === OrderStatus.SERVED ? 'bg-green-100 text-green-700' :
+                          order.status === OrderStatus.PENDING ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200'
+                          }`}>
+                          {order.status === OrderStatus.SERVED ? '提供済' : '準備中'}
+                        </span>
+                      </div>
+                      <ul className="text-sm space-y-1">
+                        {order.items.map((item, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <div className="flex flex-col">
+                              <span>{item.name} x{item.quantity}</span>
+                              {item.customizations?.length ? (
+                                <span className="text-xs text-gray-500">{item.customizations.join(' / ')}</span>
+                              ) : null}
+                            </div>
+                            <span>¥{(item.price * item.quantity).toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-izakaya-base border-t flex justify-between items-center font-bold">
+              <span>お会計合計</span>
+              <span className="text-xl">¥{totalHistoryPrice.toLocaleString()}</span>
+            </div>
+            <div className="p-2 text-center text-xs text-gray-500 bg-white">
+              ※お会計は伝票をレジまでお持ちください
+            </div>
+          </div>
         </div>
       )}
     </div>

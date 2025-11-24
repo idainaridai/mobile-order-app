@@ -379,21 +379,4 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
 ];
 
-export const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'o1',
-    tableId: '3',
-    items: [{ productId: 'p1', name: '生ビール（サッポロハートランド）中', price: 650, quantity: 2 }],
-    status: OrderStatus.PENDING,
-    totalAmount: 1300,
-    timestamp: Date.now() - 1000 * 60 * 5, // 5 mins ago
-  },
-  {
-    id: 'o2',
-    tableId: '1',
-    items: [{ productId: 'p4', name: '名物！煮込み', price: 600, quantity: 1 }],
-    status: OrderStatus.SERVED,
-    totalAmount: 600,
-    timestamp: Date.now() - 1000 * 60 * 15, // 15 mins ago
-  },
-];
+export const INITIAL_ORDERS: Order[] = [];
