@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>とどろき２丁目バル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;600&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              izakaya: {
+                base: '#f4efe6', // Ivory canvas
+                wood: '#1f2528', // Charcoal ink
+                woodLight: '#2f3539',
+                accent: '#c9a36b', // Soft gold
+                text: '#1f1b16',
+                muted: '#6b645c',
+              }
+            },
+            fontFamily: {
+              sans: ['"Noto Sans JP"', 'sans-serif'],
+              heading: ['"Playfair Display"', '"Noto Serif JP"', 'serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background: radial-gradient(circle at 20% 20%, rgba(201, 163, 107, 0.1), transparent 30%), radial-gradient(circle at 80% 0%, rgba(47, 53, 57, 0.08), transparent 30%), linear-gradient(135deg, #f7f3ec 0%, #f1ece3 50%, #f7f3ec 100%);
+        color: #1f1b16;
+        min-height: 100vh;
+        font-family: "Noto Sans JP", sans-serif;
+      }
+      /* Custom Scrollbar for a cleaner look */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #d6d3d1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a29e;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/mobile-order-app/assets/index-DJLGqFoS.js"></script>
+</head>
+  <body>
+    <div id="root"></div>
+</body>
+</html>
